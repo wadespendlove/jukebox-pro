@@ -10,6 +10,8 @@ import {
 import { createPlaylistTrack } from "#db/queries/playlists_tracks";
 import { getTracksByPlaylistId } from "#db/queries/tracks";
 
+import requireUser from "#middleware/requireUser.js";
+
 router
   .route("/")
   .get(async (req, res) => {
@@ -23,13 +25,16 @@ router
     if (!name || !description)
       return res.status(400).send("Request body requires: name, description");
 
-    const playlist = await createPlaylist(name, description);
+    const playlist = await createPlaylist(name, description, req.user.id);
     res.status(201).send(playlist);
   });
 
 router.param("id", async (req, res, next, id) => {
   const playlist = await getPlaylistById(id);
   if (!playlist) return res.status(404).send("Playlist not found.");
+  if (playlist.owner_id !== req.user.id) {
+    return res.status(403).send("Forbidden: You do not own this playlist.");
+  }
 
   req.playlist = playlist;
   next();
